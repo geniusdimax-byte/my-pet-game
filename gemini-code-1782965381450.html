@@ -214,7 +214,7 @@
             return "（系统提示：缺少 API Key。请在代码中填写你的 DeepSeek API Key，否则小动物没办法陪你聊天哦~）";
         }
 
-        const endpoint = "https://api.deepseek.com/chat/completions";
+        const endpoint = "/api/chat"; // 直接请求你自己的后端路由，安全又隐蔽
         let systemPrompt = "";
 
         switch(pet.type) {
