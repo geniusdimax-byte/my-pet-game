@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>宠物进化 - DeepSeek AI 智能修仙版</title>
+    <style>
+        :root {
+            --bg-color: #FFF5BA;
+            --card-bg: #FFFFFF;
+            --primary-color: #FFD1DC;
+            --secondary-color: #B5EAD7;
+            --text-main: #5C4d4d;
+            --overlay-bg: rgba(0, 0, 0, 0.6);
+            --danger-color: #ff7675;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: "PingFang SC", sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); display: flex; justify-content: center; height: 100vh; overflow: hidden; }
+
+        #app-container { width: 100%; max-width: 480px; height: 100vh; background-color: #FAFAFA; display: flex; flex-direction: column; position: relative; }
+        
+        /* 顶部 Header 加入相对定位，方便放设置按钮 */
+        .header { position: relative; background-color: var(--primary-color); padding: 15px; text-align: center; font-size: 18px; font-weight: bold; color: #fff; z-index: 10; }
+        .settings-btn { position: absolute; right: 15px; top: 15px; cursor: pointer; font-size: 20px; transition: transform 0.2s; }
+        .settings-btn:active { transform: rotate(90deg); }
+
+        /* 顶部添加目标栏 */
+        .add-goal-bar { background: var(--card-bg); padding: 12px; display: flex; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); z-index: 5; align-items: center; }
+        .add-goal-bar input[type="text"] { flex: 2; padding: 10px; border: 2px solid #eee; border-radius: 12px; font-size: 14px; outline: none; }
+        .add-goal-bar input[type="number"] { flex: 1; padding: 10px; border: 2px solid #eee; border-radius: 12px; font-size: 14px; outline: none; max-width: 80px; text-align: center; }
+        .add-goal-bar button { padding: 10px 15px; background-color: var(--secondary-color); color: #4a6b5d; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+
+        /* 视图控制 */
+        .view-layer { flex: 1; display: none; flex-direction: column; position: relative; overflow-y: auto; overflow-x: hidden; }
+        .view-layer.active { display: flex; }
+
+        /* 现世动物园 */
+        #view-zoo { background: linear-gradient(180deg, #e0f7fa 0%, #b2dfdb 100%); }
+        .zoo-pet { position: absolute; transition: top 3s ease-in-out, left 3s ease-in-out, transform 0.3s; cursor: pointer; display: flex; flex-direction: column; align-items: center; animation: float 2s infinite ease-in-out alternate; }
+        @keyframes float { 0% { transform: translateY(0); } 100% { transform: translateY(-5px); } }
+        .zoo-pet img { width: 80px; height: 80px; object-fit: contain; filter: drop-shadow(0px 5px 5px rgba(0,0,0,0.2)); }
+        .zoo-pet-goal { font-size: 12px; background: rgba(255,255,255,0.85); padding: 4px 8px; border-radius: 12px; margin-top: -10px; font-weight: bold; color: #333; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 2; white-space: nowrap; }
+
+        /* 轮回录：天界与墓地 */
+        #view-samsara { background: #333; }
+        .heaven-section { min-height: 50%; background: linear-gradient(180deg, #fff9c4 0%, #ffeaa7 100%); position: relative; padding: 20px 10px; border-bottom: 4px solid #f1c40f; }
+        .heaven-title { text-align: center; color: #d35400; font-size: 20px; font-weight: bold; text-shadow: 0 2px 4px rgba(255,255,255,0.8); margin-bottom: 20px; letter-spacing: 2px; }
+        .god-pet { display: inline-flex; flex-direction: column; align-items: center; margin: 10px; animation: glow 2s infinite alternate; cursor: pointer; }
+        @keyframes glow { 0% { filter: drop-shadow(0 0 5px #f1c40f); transform: translateY(0); } 100% { filter: drop-shadow(0 0 15px #f1c40f); transform: translateY(-5px); } }
+        .god-emoji { font-size: 45px; position: relative; }
+        .god-halo { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font-size: 30px; }
+        .god-name { background: linear-gradient(90deg, #f1c40f, #e67e22); color: #fff; font-size: 11px; padding: 4px 8px; border-radius: 10px; font-weight: bold; margin-top: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); white-space: nowrap; }
+
+        .graveyard-section { min-height: 50%; background: linear-gradient(180deg, #2d3436 0%, #1e272e 100%); position: relative; padding: 20px 10px; }
+        .cemetery-title { text-align: center; color: #7f8c8d; font-size: 18px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.8); margin-bottom: 20px; letter-spacing: 2px; }
+        .tombstone { display: inline-flex; flex-direction: column; align-items: center; margin: 10px 15px; cursor: pointer; transition: transform 0.2s; }
+        .tombstone:hover { transform: scale(1.1); }
+        .tomb-emoji { font-size: 40px; margin-bottom: 5px; filter: grayscale(100%) drop-shadow(0px 4px 2px rgba(0,0,0,0.8)); opacity: 0.8; }
+        .tomb-name { background: rgba(0,0,0,0.8); color: #95a5a6; font-size: 11px; padding: 3px 8px; border-radius: 5px; border: 1px solid #555; white-space: nowrap; }
+
+        /* 弹窗通用样式 */
+        .modal-overlay { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--overlay-bg); z-index: 100; justify-content: center; align-items: flex-end; padding-bottom: 20px; }
+        .modal-content { background: #fff; width: 92%; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes slideUp { 0% { transform: translateY(100%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        
+        /* 聊天弹窗专属 */
+        #feed-modal .modal-content { height: 85%; }
+        .chat-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .chat-header img { width: 60px; height: 60px; object-fit: contain; }
+        .chat-header-info { flex: 1; }
+        .modal-goal-title { font-size: 18px; font-weight: bold; }
+        .modal-streak-text { font-size: 13px; color: #888; margin-top: 4px; }
+        .chat-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding-right: 5px; margin-bottom: 15px; }
+        .msg { max-width: 85%; padding: 10px 14px; border-radius: 15px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }
+        .msg-pet { background: #f0f0f0; color: #333; align-self: flex-start; border-top-left-radius: 2px; }
+        .msg-user { background: var(--primary-color); color: #fff; align-self: flex-end; border-top-right-radius: 2px; }
+        textarea { width: 100%; height: 60px; padding: 12px; border: 2px solid #eee; border-radius: 12px; resize: none; outline: none; margin-bottom: 10px; font-size: 14px; }
+        
+        /* 按钮组 */
+        .btn-group { display: flex; gap: 10px; width: 100%; }
+        .btn-feed { flex: 3; padding: 12px; background: var(--secondary-color); color: #2d4539; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
+        .btn-cancel { flex: 1; padding: 12px; background: #eee; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; }
+        .btn-delete { flex: 1; padding: 12px; background: var(--danger-color); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* 底部导航栏 */
+        .bottom-nav { display: flex; background: #fff; border-top: 1px solid #eee; z-index: 10; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { flex: 1; padding: 15px 0; text-align: center; cursor: pointer; color: #aaa; font-weight: bold; font-size: 15px; transition: color 0.2s; }
+        .nav-item.active { color: var(--primary-color); border-top: 3px solid var(--primary-color); margin-top: -1px; }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div class="header">
+        🐾 习惯修仙录 (DeepSeek 版)
+        <div class="settings-btn" id="btn-open-settings">⚙️</div>
+    </div>
+    <div class="add-goal-bar">
+        <input type="text" id="new-goal-input" placeholder="输入目标 (如: 每天冥想)">
+        <input type="number" id="new-goal-days" placeholder="天数" value="21">
+        <button id="add-goal-btn">修炼</button>
+    </div>
+    
+    <div id="view-zoo" class="view-layer active"></div>
+
+    <div id="view-samsara" class="view-layer">
+        <div class="heaven-section">
+            <div class="heaven-title">✨ 飞升天界 ✨</div>
+            <div id="heaven-container" style="display: flex; flex-wrap: wrap; justify-content: center;"></div>
+        </div>
+        <div class="graveyard-section">
+            <div class="cemetery-title">🪦 遗忘公墓 🪦</div>
+            <div id="graveyard-container" style="display: flex; flex-wrap: wrap; justify-content: center;"></div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('zoo')">🏞️ 现世</div>
+        <div class="nav-item" onclick="switchTab('samsara')">📜 轮回录</div>
+    </div>
+
+    <!-- 聊天复盘弹窗 -->
+    <div id="feed-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="chat-header">
+                <img src="" id="modal-img">
+                <div class="chat-header-info">
+                    <div class="modal-goal-title" id="modal-goal">目标名称</div>
+                    <div class="modal-streak-text">进度: <span id="modal-streak" style="color: #ff9a9e; font-weight:bold;">0</span> / <span id="modal-target">21</span> 天</div>
+                </div>
+            </div>
+            
+            <div class="chat-container" id="chat-container"></div>
+            
+            <textarea id="reflection-input" placeholder="今日修行感悟..."></textarea>
+            <div class="btn-group">
+                <button class="btn-delete" id="btn-delete">🔪 走火入魔</button>
+                <button class="btn-cancel" id="btn-cancel">退出</button>
+                <button class="btn-feed" id="btn-feed">传功复盘</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置与清除缓存弹窗 -->
+    <div id="settings-modal" class="modal-overlay" style="align-items: center;">
+        <div class="modal-content" style="text-align: center; height: auto;">
+            <h2 style="margin-bottom: 15px; color: var(--text-main);">⚙️ 天道设置</h2>
+            <p style="font-size: 14px; color: #888; margin-bottom: 25px; line-height: 1.5;">
+                由于测试数据过多导致世界混乱？<br>你可以选择重塑天地。此操作将抹除所有现世宠物、飞升神仙以及墓地亡魂。
+            </p>
+            <button id="btn-reset-world" style="width: 100%; padding: 15px; background: var(--danger-color); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; margin-bottom: 10px; cursor: pointer;">
+                ☄️ 重塑天地 (清空所有缓存)
+            </button>
+            <button id="btn-close-settings" style="width: 100%; padding: 15px; background: #eee; color: var(--text-main); border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer;">
+                返回现世
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // ⚠️ 请在此处填入你的 DeepSeek API Key
+    // ==========================================
+    const API_KEY = process.env.DEEPSEEK_KEY; 
+    // ==========================================
+
+    const petPool = [
+        { type: '猫咪', emoji: '🐱', imageUrl: 'https://api.dicebear.com/7.x/notionists/svg?seed=Naitang' },
+        { type: '修狗', emoji: '🐶', imageUrl: 'https://api.dicebear.com/7.x/notionists/svg?seed=Corgi' },
+        { type: '小猪', emoji: '🐷', imageUrl: 'https://api.dicebear.com/7.x/notionists/svg?seed=Piggy' }
+    ];
+
+    const deathCauses = ["走火入魔，道心破碎", "沉迷短视频，荒废修为", "被『明天再说』心魔吞噬", "三分钟热度，灵气溃散"];
+    const godTitles = ["之神", "真君", "星君", "大帝", "菩萨", "尊者", "老祖"];
+
+    let myPets = JSON.parse(localStorage.getItem('myPets') || '[]');
+    let deadPets = JSON.parse(localStorage.getItem('deadPets') || '[]');
+    let ascendedPets = JSON.parse(localStorage.getItem('ascendedPets') || '[]');
+    let activePetId = null;
+    const chatContainer = document.getElementById('chat-container');
+
+    function save() { 
+        localStorage.setItem('myPets', JSON.stringify(myPets)); 
+        localStorage.setItem('deadPets', JSON.stringify(deadPets)); 
+        localStorage.setItem('ascendedPets', JSON.stringify(ascendedPets)); 
+    }
+
+    // --- 设置与清空缓存逻辑 ---
+    document.getElementById('btn-open-settings').onclick = () => {
+        document.getElementById('settings-modal').style.display = 'flex';
+    };
+
+    document.getElementById('btn-close-settings').onclick = () => {
+        document.getElementById('settings-modal').style.display = 'none';
+    };
+
+    document.getElementById('btn-reset-world').onclick = () => {
+        if (confirm("⚠️ 警告：天道崩塌，万物归零！\n所有的宠物、神仙、墓碑都将彻底消失。\n你确定要重新投胎吗？")) {
+            // 清除所有的 LocalStorage 缓存
+            localStorage.removeItem('myPets');
+            localStorage.removeItem('deadPets');
+            localStorage.removeItem('ascendedPets');
+            // 刷新页面，让世界重新开始
+            location.reload();
+        }
+    };
+
+    // --- DeepSeek API 核心请求 ---
+    async function callDeepSeekAPI(pet, userText) {
+        if (!API_KEY) {
+            return "（系统提示：缺少 API Key。请在代码中填写你的 DeepSeek API Key，否则小动物没办法陪你聊天哦~）";
+        }
+
+        const endpoint = "https://api.deepseek.com/chat/completions";
+        let systemPrompt = "";
+
+        switch(pet.type) {
+            case '猫咪':
+                systemPrompt = `你是一只名叫奶糖的布偶猫，温柔粘人，喜欢用“喵~”和动作描写。主人正在修炼【${pet.goal}】，他的复盘是：“${userText}”。请在50字内温柔地回应并鼓励他，提及他的坚持天数（${pet.streak}天）。`;
+                break;
+            case '修狗':
+                systemPrompt = `你是元气满满的柯基犬，热血且充满活力，喜欢汪汪叫。主人正在修炼【${pet.goal}】，他的复盘是：“${userText}”。请在50字内像教练一样激情地鼓励他，提及他的坚持天数（${pet.streak}天）。`;
+                break;
+            case '小猪':
+                systemPrompt = `你是慵懒贪吃的小香猪，说话慢吞吞，喜欢用食物做比喻。主人正在修炼【${pet.goal}】，他的复盘是：“${userText}”。请在50字内用吃货的逻辑回应他，提及他的坚持天数（${pet.streak}天），给他轻松感。`;
+                break;
+            default:
+                systemPrompt = `你是可爱的虚拟宠物。主人正在修炼【${pet.goal}】，他的复盘是：“${userText}”。请在50字内用符合你动物形象的可爱语气回应他。`;
+        }
+
+        try {
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${API_KEY}` 
+                },
+                body: JSON.stringify({
+                    model: "deepseek-chat",
+                    messages: [{ role: "system", content: systemPrompt }],
+                    temperature: 0.7
+                })
+            });
+            const data = await response.json();
+            if (data.choices && data.choices.length > 0) {
+                return data.choices[0].message.content;
+            } else {
+                return "（小家伙正在思考，一时间不知道怎么回答）";
+            }
+        } catch (error) {
+            console.error("API Error:", error);
+            return "呜呜，我跟天界的信号断了，请检查网络或 API Key。";
+        }
+    }
+
+    // --- 导航栏切换 ---
+    function switchTab(tabName) {
+        document.getElementById('view-zoo').classList.toggle('active', tabName === 'zoo');
+        document.getElementById('view-samsara').classList.toggle('active', tabName === 'samsara');
+        const navs = document.querySelectorAll('.nav-item');
+        navs[0].classList.toggle('active', tabName === 'zoo');
+        navs[1].classList.toggle('active', tabName === 'samsara');
+    }
+
+    // --- 渲染功能 ---
+    function spawn(petData) {
+        const div = document.createElement('div');
+        div.className = 'zoo-pet';
+        div.id = `pet-${petData.id}`;
+        div.innerHTML = `<img src="${petData.imageUrl}"><div class="zoo-pet-goal">${petData.goal}</div>`;
+        div.style.left = Math.random() * (document.getElementById('view-zoo').clientWidth - 80) + 'px';
+        div.style.top = Math.random() * (document.getElementById('view-zoo').clientHeight - 100) + 'px';
+        
+        div.onclick = () => { 
+            activePetId = petData.id; 
+            document.getElementById('modal-img').src = petData.imageUrl; 
+            document.getElementById('modal-goal').innerText = petData.goal; 
+            document.getElementById('modal-streak').innerText = petData.streak;
+            document.getElementById('modal-target').innerText = petData.targetDays;
+            renderChat(); 
+            document.getElementById('feed-modal').style.display = 'flex'; 
+        };
+        document.getElementById('view-zoo').appendChild(div);
+    }
+
+    function renderSamsara() {
+        const heaven = document.getElementById('heaven-container');
+        const graveyard = document.getElementById('graveyard-container');
+        heaven.innerHTML = ''; graveyard.innerHTML = '';
+
+        ascendedPets.forEach(pet => {
+            const div = document.createElement('div');
+            div.className = 'god-pet';
+            div.innerHTML = `<div class="god-emoji"><div class="god-halo">✨</div>${pet.emoji}</div><div class="god-name">${pet.godTitle}</div>`;
+            div.onclick = () => alert(`📜【飞升仙箓】\n\n法号：${pet.godTitle}\n本源：${pet.goal}\n历劫：圆满坚持 ${pet.targetDays} 天！\n\n"此子道心坚毅，已脱离凡俗！"`);
+            heaven.appendChild(div);
+        });
+
+        deadPets.forEach(pet => {
+            const div = document.createElement('div');
+            div.className = 'tombstone';
+            div.innerHTML = `<div class="tomb-emoji">🪦</div><div class="tomb-name">${pet.goal}</div>`;
+            div.onclick = () => alert(`📜【墓志铭】\n\n生前夙愿：${pet.goal}\n修为停滞：${pet.streak}/${pet.targetDays} 天\n陨落原因：${pet.deathReason}`);
+            graveyard.appendChild(div);
+        });
+    }
+
+    function renderChat() {
+        const pet = myPets.find(p => p.id === activePetId);
+        chatContainer.innerHTML = '';
+        pet.chatHistory.forEach(chat => {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `msg msg-${chat.role}`;
+            msgDiv.innerText = chat.content;
+            chatContainer.appendChild(msgDiv);
+        });
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // --- 核心交互逻辑 ---
+    document.getElementById('add-goal-btn').onclick = () => {
+        if (myPets.length >= 5) {
+            return alert("🧘 精力有限，贪多嚼不烂！\n现世最多只能同时修炼 5 个目标。");
+        }
+        const goal = document.getElementById('new-goal-input').value.trim();
+        let targetDays = parseInt(document.getElementById('new-goal-days').value);
+        if (!goal) return alert("请输入修炼目标！");
+        if (isNaN(targetDays) || targetDays <= 0) targetDays = 21; 
+
+        const petBase = petPool[Math.floor(Math.random() * petPool.length)];
+        const pet = { 
+            ...petBase, id: Date.now(), goal, targetDays, streak: 0,
+            chatHistory: [{ role: 'pet', content: `主人！距离本座飞升还有 ${targetDays} 天，切记每天来传功复盘！` }]
+        };
+        myPets.push(pet); save(); spawn(pet);
+        document.getElementById('new-goal-input').value = '';
+    };
+
+    // 传功复盘
+    document.getElementById('btn-feed').onclick = async () => {
+        const text = document.getElementById('reflection-input').value.trim();
+        if (!text) return;
+        const pet = myPets.find(p => p.id === activePetId);
+        const feedBtn = document.getElementById('btn-feed');
+        
+        pet.chatHistory.push({ role: 'user', content: text });
+        pet.streak += 1;
+        document.getElementById('modal-streak').innerText = pet.streak;
+        document.getElementById('reflection-input').value = '';
+        
+        pet.chatHistory.push({ role: 'pet', content: "正在冥想感悟中..." });
+        renderChat();
+        feedBtn.disabled = true;
+        feedBtn.innerText = "感悟中...";
+
+        // 呼叫 DeepSeek API
+        const aiResponse = await callDeepSeekAPI(pet, text);
+        
+        pet.chatHistory.pop(); 
+        pet.chatHistory.push({ role: 'pet', content: aiResponse });
+        feedBtn.disabled = false;
+        feedBtn.innerText = "传功复盘";
+        
+        save(); renderChat();
+
+        // 飞升判定
+        if (pet.streak >= pet.targetDays) {
+            setTimeout(() => {
+                const title = pet.goal + godTitles[Math.floor(Math.random() * godTitles.length)];
+                pet.godTitle = title;
+                ascendedPets.push(pet); 
+                myPets = myPets.filter(p => p.id !== activePetId);
+                save();
+                
+                document.getElementById(`pet-${activePetId}`).remove();
+                document.getElementById('feed-modal').style.display = 'none';
+                renderSamsara();
+                alert(`🎊 祥云笼罩，金光乍现！\n【${pet.goal}】修行圆满，已白日飞升！\n天帝册封其为：【${title}】！`);
+            }, 1000);
+        }
+    };
+
+    // 走火入魔
+    document.getElementById('btn-delete').onclick = () => {
+        if (confirm("确定要放弃吗？道心一旦破碎，它将永远被埋在后山公墓！")) {
+            const pet = myPets.find(p => p.id === activePetId);
+            pet.deathReason = deathCauses[Math.floor(Math.random() * deathCauses.length)];
+            deadPets.push(pet); 
+            myPets = myPets.filter(p => p.id !== activePetId);
+            save();
+            
+            document.getElementById(`pet-${activePetId}`).remove();
+            renderSamsara();
+            document.getElementById('feed-modal').style.display = 'none';
+        }
+    };
+
+    document.getElementById('btn-cancel').onclick = () => document.getElementById('feed-modal').style.display = 'none';
+
+    window.onload = () => {
+        myPets.forEach(spawn);
+        renderSamsara();
+    };
+</script>
+</body>
+</html>
